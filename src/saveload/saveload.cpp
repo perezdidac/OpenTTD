@@ -305,16 +305,12 @@ static void SlNullPointers()
 	 * pointers from other pools. */
 	_sl_version = SAVEGAME_VERSION;
 
-	DEBUG(sl, 1, "Nulling pointers");
-
 	FOR_ALL_CHUNK_HANDLERS(ch) {
 		if (ch->ptrs_proc != nullptr) {
-			DEBUG(sl, 2, "Nulling pointers for %c%c%c%c", ch->id >> 24, ch->id >> 16, ch->id >> 8, ch->id);
+			DEBUG(sl, 3, "Nulling pointers for %c%c%c%c", ch->id >> 24, ch->id >> 16, ch->id >> 8, ch->id);
 			ch->ptrs_proc();
 		}
 	}
-
-	DEBUG(sl, 1, "All pointers nulled");
 
 	assert(_sl.action == SLA_NULL);
 }
@@ -1142,7 +1138,7 @@ static size_t ReferenceToInt(const void *obj, SLRefType rt)
  */
 static void *IntToReference(size_t index, SLRefType rt)
 {
-	assert_compile(sizeof(size_t) <= sizeof(void *));
+	static_assert(sizeof(size_t) <= sizeof(void *));
 
 	assert(_sl.action == SLA_PTRS);
 
@@ -1754,32 +1750,6 @@ static void SlLoadCheckChunk(const ChunkHandler *ch)
 }
 
 /**
- * Stub Chunk handlers to only calculate length and do nothing else.
- * The intended chunk handler that should be called.
- */
-static ChunkSaveLoadProc *_stub_save_proc;
-
-/**
- * Stub Chunk handlers to only calculate length and do nothing else.
- * Actually call the intended chunk handler.
- * @param arg ignored parameter.
- */
-static inline void SlStubSaveProc2(void *arg)
-{
-	_stub_save_proc();
-}
-
-/**
- * Stub Chunk handlers to only calculate length and do nothing else.
- * Call SlAutoLenth with our stub save proc that will eventually
- * call the intended chunk handler.
- */
-static void SlStubSaveProc()
-{
-	SlAutolength(SlStubSaveProc2, nullptr);
-}
-
-/**
  * Save a chunk of data (eg. vehicles, stations, etc.). Each chunk is
  * prefixed by an ID identifying it, followed by data, and terminator where appropriate
  * @param ch The chunkhandler that will be used for the operation
@@ -1793,12 +1763,6 @@ static void SlSaveChunk(const ChunkHandler *ch)
 
 	SlWriteUint32(ch->id);
 	DEBUG(sl, 2, "Saving chunk %c%c%c%c", ch->id >> 24, ch->id >> 16, ch->id >> 8, ch->id);
-
-	if (ch->flags & CH_AUTO_LENGTH) {
-		/* Need to calculate the length. Solve that by calling SlAutoLength in the save_proc. */
-		_stub_save_proc = proc;
-		proc = SlStubSaveProc;
-	}
 
 	_sl.block_mode = ch->flags & CH_TYPE_MASK;
 	switch (ch->flags & CH_TYPE_MASK) {
@@ -1879,16 +1843,12 @@ static void SlFixPointers()
 {
 	_sl.action = SLA_PTRS;
 
-	DEBUG(sl, 1, "Fixing pointers");
-
 	FOR_ALL_CHUNK_HANDLERS(ch) {
 		if (ch->ptrs_proc != nullptr) {
-			DEBUG(sl, 2, "Fixing pointers for %c%c%c%c", ch->id >> 24, ch->id >> 16, ch->id >> 8, ch->id);
+			DEBUG(sl, 3, "Fixing pointers for %c%c%c%c", ch->id >> 24, ch->id >> 16, ch->id >> 8, ch->id);
 			ch->ptrs_proc();
 		}
 	}
-
-	DEBUG(sl, 1, "All pointers fixed");
 
 	assert(_sl.action == SLA_PTRS);
 }
@@ -2445,7 +2405,7 @@ static const SaveLoadFormat *GetSavegameFormat(char *s, byte *compression_level)
 /* actual loader/saver function */
 void InitializeGame(uint size_x, uint size_y, bool reset_date, bool reset_settings);
 extern bool AfterLoadGame();
-extern bool LoadOldSaveGame(const char *file);
+extern bool LoadOldSaveGame(const std::string &file);
 
 /**
  * Clear temporary data that is passed between various saveload phases.
@@ -2801,7 +2761,7 @@ SaveOrLoadResult LoadWithFilter(LoadFilter *reader)
  * @param threaded True when threaded saving is allowed
  * @return Return the result of the action. #SL_OK, #SL_ERROR, or #SL_REINIT ("unload" the game)
  */
-SaveOrLoadResult SaveOrLoad(const char *filename, SaveLoadOperation fop, DetailedFileType dft, Subdirectory sb, bool threaded)
+SaveOrLoadResult SaveOrLoad(const std::string &filename, SaveLoadOperation fop, DetailedFileType dft, Subdirectory sb, bool threaded)
 {
 	/* An instance of saving is already active, so don't go saving again */
 	if (_sl.saveinprogress && fop == SLO_SAVE && dft == DFT_GAME_FILE && threaded) {
@@ -2865,7 +2825,7 @@ SaveOrLoadResult SaveOrLoad(const char *filename, SaveLoadOperation fop, Detaile
 		}
 
 		if (fop == SLO_SAVE) { // SAVE game
-			DEBUG(desync, 1, "save: %08x; %02x; %s", _date, _date_fract, filename);
+			DEBUG(desync, 1, "save: %08x; %02x; %s", _date, _date_fract, filename.c_str());
 			if (_network_server || !_settings_client.gui.threaded_saves) threaded = false;
 
 			return DoSave(new FileWriter(fh), threaded);
@@ -2873,7 +2833,7 @@ SaveOrLoadResult SaveOrLoad(const char *filename, SaveLoadOperation fop, Detaile
 
 		/* LOAD game */
 		assert(fop == SLO_LOAD || fop == SLO_CHECK);
-		DEBUG(desync, 1, "load: %s", filename);
+		DEBUG(desync, 1, "load: %s", filename.c_str());
 		return DoLoad(new FileReader(fh), fop == SLO_CHECK);
 	} catch (...) {
 		/* This code may be executed both for old and new save games. */
@@ -2962,7 +2922,7 @@ void FileToSaveLoad::SetMode(SaveLoadOperation fop, AbstractFileType aft, Detail
  */
 void FileToSaveLoad::SetName(const char *name)
 {
-	strecpy(this->name, name, lastof(this->name));
+	this->name = name;
 }
 
 /**

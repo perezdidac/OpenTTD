@@ -1091,11 +1091,22 @@ static void DoDrawVehicle(const Vehicle *v)
 		if (to != TO_INVALID && (IsTransparencySet(to) || IsInvisibilitySet(to))) return;
 	}
 
+	/*
+	 * If the vehicle sprite was not updated despite further viewport changes, we need
+	 * to update it before drawing.
+	 */
+	if (v->sprite_cache.sprite_has_viewport_changes) {
+		VehicleSpriteSeq seq;
+		v->GetImage(v->direction, EIT_ON_MAP, &seq);
+		v->sprite_cache.sprite_seq = seq;
+		v->sprite_cache.sprite_has_viewport_changes = false;
+	}
+
 	StartSpriteCombine();
-	for (uint i = 0; i < v->sprite_seq.count; ++i) {
-		PaletteID pal2 = v->sprite_seq.seq[i].pal;
+	for (uint i = 0; i < v->sprite_cache.sprite_seq.count; ++i) {
+		PaletteID pal2 = v->sprite_cache.sprite_seq.seq[i].pal;
 		if (!pal2 || (v->vehstatus & VS_CRASHED)) pal2 = pal;
-		AddSortableSpriteToDraw(v->sprite_seq.seq[i].sprite, pal2, v->x_pos + v->x_offs, v->y_pos + v->y_offs,
+		AddSortableSpriteToDraw(v->sprite_cache.sprite_seq.seq[i].sprite, pal2, v->x_pos + v->x_offs, v->y_pos + v->y_offs,
 			v->x_extent, v->y_extent, v->z_extent, v->z_pos, shadowed, v->x_bb_offs, v->y_bb_offs);
 	}
 	EndSpriteCombine();
@@ -1113,11 +1124,15 @@ void ViewportAddVehicles(DrawPixelInfo *dpi)
 	const int t = dpi->top;
 	const int b = dpi->top + dpi->height;
 
+	/* Border size of MAX_VEHICLE_PIXEL_xy */
+	const int xb = MAX_VEHICLE_PIXEL_X * ZOOM_LVL_BASE;
+	const int yb = MAX_VEHICLE_PIXEL_Y * ZOOM_LVL_BASE;
+
 	/* The hash area to scan */
 	int xl, xu, yl, yu;
 
-	if (dpi->width + (MAX_VEHICLE_PIXEL_X * ZOOM_LVL_BASE) < GEN_HASHX_SIZE) {
-		xl = GEN_HASHX(l - MAX_VEHICLE_PIXEL_X * ZOOM_LVL_BASE);
+	if (dpi->width + xb < GEN_HASHX_SIZE) {
+		xl = GEN_HASHX(l - xb);
 		xu = GEN_HASHX(r);
 	} else {
 		/* scan whole hash row */
@@ -1125,8 +1140,8 @@ void ViewportAddVehicles(DrawPixelInfo *dpi)
 		xu = GEN_HASHX_MASK;
 	}
 
-	if (dpi->height + (MAX_VEHICLE_PIXEL_Y * ZOOM_LVL_BASE) < GEN_HASHY_SIZE) {
-		yl = GEN_HASHY(t - MAX_VEHICLE_PIXEL_Y * ZOOM_LVL_BASE);
+	if (dpi->height + yb < GEN_HASHY_SIZE) {
+		yl = GEN_HASHY(t - yb);
 		yu = GEN_HASHY(b);
 	} else {
 		/* scan whole column */
@@ -1139,6 +1154,7 @@ void ViewportAddVehicles(DrawPixelInfo *dpi)
 			const Vehicle *v = _vehicle_viewport_hash[x + y]; // already masked & 0xFFF
 
 			while (v != nullptr) {
+
 				if (!(v->vehstatus & VS_HIDDEN) &&
 						l <= v->coord.right &&
 						t <= v->coord.bottom &&
@@ -1146,6 +1162,25 @@ void ViewportAddVehicles(DrawPixelInfo *dpi)
 						b >= v->coord.top) {
 					DoDrawVehicle(v);
 				}
+				else if (l <= v->coord.right + xb &&
+					t <= v->coord.bottom + yb &&
+					r >= v->coord.left - xb &&
+					b >= v->coord.top - yb)
+				{
+					/*
+					 * Indicate that this vehicle was considered for rendering in a viewport,
+					 * is within the bounds where a sprite could be valid for rendering
+					 * and we therefore need to update sprites more frequently in case a callback
+					 * will change the bounding box to one which will cause the sprite to be
+					 * displayed.
+					 *
+					 * This reduces the chances of flicker when sprites enter the screen, if they
+					 * are part of a newgrf vehicle set which changes bounding boxes within a
+					 * single vehicle direction.
+					 */
+					v->sprite_cache.is_viewport_candidate = true;
+				}
+
 				v = v->hash_viewport_next;
 			}
 
@@ -1570,7 +1605,7 @@ void Vehicle::UpdatePosition()
 void Vehicle::UpdateViewport(bool dirty)
 {
 	Rect new_coord;
-	this->sprite_seq.GetBounds(&new_coord);
+	this->sprite_cache.sprite_seq.GetBounds(&new_coord);
 
 	Point pt = RemapCoords(this->x_pos + this->x_offs, this->y_pos + this->y_offs, this->z_pos);
 	new_coord.left   += pt.x;
@@ -1935,7 +1970,7 @@ static PaletteID GetEngineColourMap(EngineID engine_type, CompanyID company, Eng
 		uint16 callback = GetVehicleCallback(CBID_VEHICLE_COLOUR_MAPPING, 0, 0, engine_type, v);
 		/* Failure means "use the default two-colour" */
 		if (callback != CALLBACK_FAILED) {
-			assert_compile(PAL_NONE == 0); // Returning 0x4000 (resp. 0xC000) coincidences with default value (PAL_NONE)
+			static_assert(PAL_NONE == 0); // Returning 0x4000 (resp. 0xC000) coincidences with default value (PAL_NONE)
 			map = GB(callback, 0, 14);
 			/* If bit 14 is set, then the company colours are applied to the
 			 * map else it's returned as-is. */
@@ -2552,9 +2587,9 @@ void Vehicle::ShowVisualEffect() const
 		} else {
 			effect_model = (VisualEffectSpawnModel)GB(v->vcache.cached_vis_effect, VE_TYPE_START, VE_TYPE_COUNT);
 			assert(effect_model != (VisualEffectSpawnModel)VE_TYPE_DEFAULT); // should have been resolved by UpdateVisualEffect
-			assert_compile((uint)VESM_STEAM    == (uint)VE_TYPE_STEAM);
-			assert_compile((uint)VESM_DIESEL   == (uint)VE_TYPE_DIESEL);
-			assert_compile((uint)VESM_ELECTRIC == (uint)VE_TYPE_ELECTRIC);
+			static_assert((uint)VESM_STEAM    == (uint)VE_TYPE_STEAM);
+			static_assert((uint)VESM_DIESEL   == (uint)VE_TYPE_DIESEL);
+			static_assert((uint)VESM_ELECTRIC == (uint)VE_TYPE_ELECTRIC);
 		}
 
 		/* Show no smoke when:

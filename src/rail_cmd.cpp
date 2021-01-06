@@ -62,7 +62,7 @@ enum SignalOffsets {
  */
 void ResetRailTypes()
 {
-	assert_compile(lengthof(_original_railtypes) <= lengthof(_railtypes));
+	static_assert(lengthof(_original_railtypes) <= lengthof(_railtypes));
 
 	uint i = 0;
 	for (; i < lengthof(_original_railtypes); i++) _railtypes[i] = _original_railtypes[i];
@@ -263,12 +263,8 @@ static CommandCost CheckTrackCombination(TileIndex tile, TrackBits to_build, uin
 	}
 
 	/* Let's see if we may build this */
-	if ((flags & DC_NO_RAIL_OVERLAP) || HasSignals(tile)) {
-		/* If we are not allowed to overlap (flag is on for ai companies or we have
-		 * signals on the tile), check that */
-		if (future != TRACK_BIT_HORZ && future != TRACK_BIT_VERT) {
-			return_cmd_error((flags & DC_NO_RAIL_OVERLAP) ? STR_ERROR_IMPOSSIBLE_TRACK_COMBINATION : STR_ERROR_MUST_REMOVE_SIGNALS_FIRST);
-		}
+	if (HasSignals(tile) && future != TRACK_BIT_HORZ && future != TRACK_BIT_VERT) {
+		return_cmd_error(STR_ERROR_MUST_REMOVE_SIGNALS_FIRST);
 	}
 	/* Normally, we may overlap and any combination is valid */
 	return CommandCost();

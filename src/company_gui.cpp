@@ -8,6 +8,7 @@
 /** @file company_gui.cpp %Company related GUIs. */
 
 #include "stdafx.h"
+#include "currency.h"
 #include "error.h"
 #include "gui.h"
 #include "window_gui.h"
@@ -2173,30 +2174,30 @@ static const NWidgetPart _nested_company_widgets[] = {
 					EndContainer(),
 					NWidget(NWID_VERTICAL), SetPIP(4, 2, 4),
 						NWidget(NWID_SELECTION, INVALID_COLOUR, WID_C_SELECT_VIEW_BUILD_HQ),
-							NWidget(WWT_PUSHTXTBTN, COLOUR_GREY, WID_C_VIEW_HQ), SetFill(1, 0), SetDataTip(STR_COMPANY_VIEW_VIEW_HQ_BUTTON, STR_COMPANY_VIEW_VIEW_HQ_TOOLTIP),
-							NWidget(WWT_TEXTBTN, COLOUR_GREY, WID_C_BUILD_HQ), SetFill(1, 0), SetDataTip(STR_COMPANY_VIEW_BUILD_HQ_BUTTON, STR_COMPANY_VIEW_BUILD_HQ_TOOLTIP),
+							NWidget(WWT_PUSHTXTBTN, COLOUR_GREY, WID_C_VIEW_HQ), SetDataTip(STR_COMPANY_VIEW_VIEW_HQ_BUTTON, STR_COMPANY_VIEW_VIEW_HQ_TOOLTIP),
+							NWidget(WWT_TEXTBTN, COLOUR_GREY, WID_C_BUILD_HQ), SetDataTip(STR_COMPANY_VIEW_BUILD_HQ_BUTTON, STR_COMPANY_VIEW_BUILD_HQ_TOOLTIP),
 						EndContainer(),
 						NWidget(NWID_SELECTION, INVALID_COLOUR, WID_C_SELECT_RELOCATE),
-							NWidget(WWT_TEXTBTN, COLOUR_GREY, WID_C_RELOCATE_HQ), SetFill(1, 0), SetDataTip(STR_COMPANY_VIEW_RELOCATE_HQ, STR_COMPANY_VIEW_RELOCATE_COMPANY_HEADQUARTERS),
-							NWidget(NWID_SPACER), SetMinimalSize(90, 0),
+							NWidget(WWT_TEXTBTN, COLOUR_GREY, WID_C_RELOCATE_HQ), SetDataTip(STR_COMPANY_VIEW_RELOCATE_HQ, STR_COMPANY_VIEW_RELOCATE_COMPANY_HEADQUARTERS),
+							NWidget(NWID_SPACER),
 						EndContainer(),
 						NWidget(NWID_SPACER), SetFill(0, 1),
 					EndContainer(),
 				EndContainer(),
 				NWidget(WWT_TEXT, COLOUR_GREY, WID_C_DESC_COMPANY_VALUE), SetDataTip(STR_COMPANY_VIEW_COMPANY_VALUE, STR_NULL), SetFill(1, 0),
-					NWidget(NWID_VERTICAL), SetPIP(4, 2, 4),
-						NWidget(NWID_HORIZONTAL), SetPIP(0, 4, 0),
-							NWidget(NWID_VERTICAL),
-								NWidget(WWT_TEXT, COLOUR_GREY, WID_C_DESC_INFRASTRUCTURE), SetDataTip(STR_COMPANY_VIEW_INFRASTRUCTURE, STR_NULL),
-								NWidget(NWID_SPACER), SetFill(0, 1),
-							EndContainer(),
-							NWidget(WWT_EMPTY, INVALID_COLOUR, WID_C_DESC_INFRASTRUCTURE_COUNTS), SetMinimalTextLines(5, 0), SetFill(1, 0),
-							NWidget(NWID_VERTICAL),
-								NWidget(WWT_PUSHTXTBTN, COLOUR_GREY, WID_C_VIEW_INFRASTRUCTURE), SetDataTip(STR_COMPANY_VIEW_INFRASTRUCTURE_BUTTON, STR_COMPANY_VIEW_INFRASTRUCTURE_TOOLTIP),
-								NWidget(NWID_SPACER), SetFill(0, 1), SetMinimalSize(90, 0),
-							EndContainer(),
+				NWidget(NWID_VERTICAL), SetPIP(4, 2, 4),
+					NWidget(NWID_HORIZONTAL), SetPIP(0, 4, 0),
+						NWidget(NWID_VERTICAL),
+							NWidget(WWT_TEXT, COLOUR_GREY, WID_C_DESC_INFRASTRUCTURE), SetDataTip(STR_COMPANY_VIEW_INFRASTRUCTURE, STR_NULL),
+							NWidget(NWID_SPACER), SetFill(0, 1),
+						EndContainer(),
+						NWidget(WWT_EMPTY, INVALID_COLOUR, WID_C_DESC_INFRASTRUCTURE_COUNTS), SetMinimalTextLines(5, 0), SetFill(1, 0),
+						NWidget(NWID_VERTICAL),
+							NWidget(WWT_PUSHTXTBTN, COLOUR_GREY, WID_C_VIEW_INFRASTRUCTURE), SetDataTip(STR_COMPANY_VIEW_INFRASTRUCTURE_BUTTON, STR_COMPANY_VIEW_INFRASTRUCTURE_TOOLTIP),
+							NWidget(NWID_SPACER),
 						EndContainer(),
 					EndContainer(),
+				EndContainer(),
 				NWidget(NWID_HORIZONTAL),
 					NWidget(NWID_SELECTION, INVALID_COLOUR, WID_C_SELECT_DESC_OWNERS),
 						NWidget(NWID_VERTICAL), SetPIP(5, 5, 4),
@@ -2204,14 +2205,20 @@ static const NWidgetPart _nested_company_widgets[] = {
 							NWidget(NWID_SPACER), SetFill(0, 1),
 						EndContainer(),
 					EndContainer(),
+					/* Multi player buttons. */
 					NWidget(NWID_VERTICAL), SetPIP(4, 2, 4),
-						NWidget(NWID_SPACER), SetMinimalSize(90, 0), SetFill(0, 1),
-						/* Multi player buttons. */
-						NWidget(NWID_HORIZONTAL),
+						NWidget(NWID_SPACER), SetFill(0, 1),
+						NWidget(NWID_HORIZONTAL), SetPIP(0, 4, 0),
+							NWidget(NWID_SPACER), SetFill(1, 0),
+							NWidget(NWID_SELECTION, INVALID_COLOUR, WID_C_SELECT_GIVE_MONEY),
+								NWidget(WWT_PUSHTXTBTN, COLOUR_GREY, WID_C_GIVE_MONEY), SetDataTip(STR_COMPANY_VIEW_GIVE_MONEY_BUTTON, STR_COMPANY_VIEW_GIVE_MONEY_TOOLTIP),
+							EndContainer(),
+						EndContainer(),
+						NWidget(NWID_HORIZONTAL), SetPIP(0, 4, 0),
 							NWidget(WWT_EMPTY, COLOUR_GREY, WID_C_HAS_PASSWORD),
 							NWidget(NWID_SELECTION, INVALID_COLOUR, WID_C_SELECT_MULTIPLAYER),
-								NWidget(WWT_PUSHTXTBTN, COLOUR_GREY, WID_C_COMPANY_PASSWORD), SetFill(1, 0), SetDataTip(STR_COMPANY_VIEW_PASSWORD, STR_COMPANY_VIEW_PASSWORD_TOOLTIP),
-								NWidget(WWT_PUSHTXTBTN, COLOUR_GREY, WID_C_COMPANY_JOIN), SetFill(1, 0), SetDataTip(STR_COMPANY_VIEW_JOIN, STR_COMPANY_VIEW_JOIN_TOOLTIP),
+								NWidget(WWT_PUSHTXTBTN, COLOUR_GREY, WID_C_COMPANY_PASSWORD), SetDataTip(STR_COMPANY_VIEW_PASSWORD, STR_COMPANY_VIEW_PASSWORD_TOOLTIP),
+								NWidget(WWT_PUSHTXTBTN, COLOUR_GREY, WID_C_COMPANY_JOIN), SetDataTip(STR_COMPANY_VIEW_JOIN, STR_COMPANY_VIEW_JOIN_TOOLTIP),
 							EndContainer(),
 						EndContainer(),
 					EndContainer(),
@@ -2294,7 +2301,7 @@ struct CompanyWindow : Window
 			if (plane != wi->shown_plane) {
 				wi->SetDisplayedPlane(plane);
 				this->InvalidateData();
-				return;
+				reinit = true;
 			}
 
 			/* Build HQ button handling. */
@@ -2302,8 +2309,7 @@ struct CompanyWindow : Window
 			wi = this->GetWidget<NWidgetStacked>(WID_C_SELECT_VIEW_BUILD_HQ);
 			if (plane != wi->shown_plane) {
 				wi->SetDisplayedPlane(plane);
-				this->SetDirty();
-				return;
+				reinit = true;
 			}
 
 			this->SetWidgetDisabledState(WID_C_VIEW_HQ, c->location_of_HQ == INVALID_TILE);
@@ -2313,8 +2319,7 @@ struct CompanyWindow : Window
 			wi = this->GetWidget<NWidgetStacked>(WID_C_SELECT_RELOCATE);
 			if (plane != wi->shown_plane) {
 				wi->SetDisplayedPlane(plane);
-				this->SetDirty();
-				return;
+				reinit = true;
 			}
 
 			/* Owners of company */
@@ -2326,6 +2331,14 @@ struct CompanyWindow : Window
 				}
 			}
 			wi = this->GetWidget<NWidgetStacked>(WID_C_SELECT_DESC_OWNERS);
+			if (plane != wi->shown_plane) {
+				wi->SetDisplayedPlane(plane);
+				reinit = true;
+			}
+
+			/* Enable/disable 'Give money' button. */
+			plane = ((local || _local_company == COMPANY_SPECTATOR || !_settings_game.economy.give_money) ? SZSP_NONE : 0);
+			wi = this->GetWidget<NWidgetStacked>(WID_C_SELECT_GIVE_MONEY);
 			if (plane != wi->shown_plane) {
 				wi->SetDisplayedPlane(plane);
 				reinit = true;
@@ -2400,6 +2413,22 @@ struct CompanyWindow : Window
 				break;
 			}
 
+			case WID_C_VIEW_HQ:
+			case WID_C_BUILD_HQ:
+			case WID_C_RELOCATE_HQ:
+			case WID_C_VIEW_INFRASTRUCTURE:
+			case WID_C_GIVE_MONEY:
+			case WID_C_COMPANY_PASSWORD:
+			case WID_C_COMPANY_JOIN:
+				size->width = max(size->width, GetStringBoundingBox(STR_COMPANY_VIEW_VIEW_HQ_BUTTON).width);
+				size->width = max(size->width, GetStringBoundingBox(STR_COMPANY_VIEW_BUILD_HQ_BUTTON).width);
+				size->width = max(size->width, GetStringBoundingBox(STR_COMPANY_VIEW_RELOCATE_HQ).width);
+				size->width = max(size->width, GetStringBoundingBox(STR_COMPANY_VIEW_INFRASTRUCTURE_BUTTON).width);
+				size->width = max(size->width, GetStringBoundingBox(STR_COMPANY_VIEW_GIVE_MONEY_BUTTON).width);
+				size->width = max(size->width, GetStringBoundingBox(STR_COMPANY_VIEW_PASSWORD).width);
+				size->width = max(size->width, GetStringBoundingBox(STR_COMPANY_VIEW_JOIN).width);
+				break;
+
 			case WID_C_HAS_PASSWORD:
 				*size = maxdim(*size, GetSpriteSize(SPR_LOCK));
 				break;
@@ -2438,7 +2467,7 @@ struct CompanyWindow : Window
 				if (amounts[0] + amounts[1] + amounts[2] + amounts[3] == 0) {
 					DrawString(r.left, r.right, y, STR_COMPANY_VIEW_VEHICLES_NONE);
 				} else {
-					assert_compile(lengthof(amounts) == lengthof(_company_view_vehicle_count_strings));
+					static_assert(lengthof(amounts) == lengthof(_company_view_vehicle_count_strings));
 
 					for (uint i = 0; i < lengthof(amounts); i++) {
 						if (amounts[i] != 0) {
@@ -2594,6 +2623,11 @@ struct CompanyWindow : Window
 				ShowCompanyInfrastructure((CompanyID)this->window_number);
 				break;
 
+			case WID_C_GIVE_MONEY:
+				this->query_widget = WID_C_GIVE_MONEY;
+				ShowQueryString(STR_EMPTY, STR_COMPANY_VIEW_GIVE_MONEY_QUERY_CAPTION, 30, this, CS_NUMERAL, QSF_NONE);
+				break;
+
 			case WID_C_BUY_SHARE:
 				DoCommandP(0, this->window_number, 0, CMD_BUY_SHARE_IN_COMPANY | CMD_MSG(STR_ERROR_CAN_T_BUY_25_SHARE_IN_THIS));
 				break;
@@ -2649,6 +2683,14 @@ struct CompanyWindow : Window
 
 		switch (this->query_widget) {
 			default: NOT_REACHED();
+
+			case WID_C_GIVE_MONEY: {
+				Money money = (Money)(strtoull(str, nullptr, 10) / _currency->rate);
+				uint32 money_c = Clamp(ClampToI32(money), 0, 20000000); // Clamp between 20 million and 0
+
+				DoCommandP(0, money_c, this->window_number, CMD_GIVE_MONEY | CMD_MSG(STR_ERROR_CAN_T_GIVE_MONEY));
+				break;
+			}
 
 			case WID_C_PRESIDENT_NAME:
 				DoCommandP(0, 0, 0, CMD_RENAME_PRESIDENT | CMD_MSG(STR_ERROR_CAN_T_CHANGE_PRESIDENT), nullptr, str);

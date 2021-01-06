@@ -12,6 +12,7 @@
 
 #include "../fileio_type.h"
 #include "../strings_type.h"
+#include <string>
 
 /** SaveLoad versions
  * Previous savegame versions, the trunk revision where they were
@@ -337,7 +338,7 @@ struct FileToSaveLoad {
 	SaveLoadOperation file_op;           ///< File operation to perform.
 	DetailedFileType detail_ftype;   ///< Concrete file type (PNG, BMP, old save, etc).
 	AbstractFileType abstract_ftype; ///< Abstract type of file (scenario, heightmap, etc).
-	char name[MAX_PATH];             ///< Name of the file.
+	std::string name;                ///< Name of the file.
 	char title[255];                 ///< Internal name of the game.
 
 	void SetMode(FiosType ft);
@@ -361,7 +362,7 @@ extern FileToSaveLoad _file_to_saveload;
 void GenerateDefaultSaveName(char *buf, const char *last);
 void SetSaveLoadError(StringID str);
 const char *GetSaveLoadErrorString();
-SaveOrLoadResult SaveOrLoad(const char *filename, SaveLoadOperation fop, DetailedFileType dft, Subdirectory sb, bool threaded = true);
+SaveOrLoadResult SaveOrLoad(const std::string &filename, SaveLoadOperation fop, DetailedFileType dft, Subdirectory sb, bool threaded = true);
 void WaitTillSaved();
 void ProcessAsyncSaveFinish();
 void DoExitSave();
@@ -409,7 +410,6 @@ enum ChunkType {
 	CH_SPARSE_ARRAY =  2,
 	CH_TYPE_MASK    =  3,
 	CH_LAST         =  8, ///< Last chunk in this array.
-	CH_AUTO_LENGTH  = 16,
 };
 
 /**

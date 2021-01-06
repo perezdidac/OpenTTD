@@ -341,8 +341,8 @@ CommandCost CmdBuildAircraft(TileIndex tile, DoCommandFlag flags, const Engine *
 		v->date_of_last_service = _date;
 		v->build_year = u->build_year = _cur_year;
 
-		v->sprite_seq.Set(SPR_IMG_QUERY);
-		u->sprite_seq.Set(SPR_IMG_QUERY);
+		v->sprite_cache.sprite_seq.Set(SPR_IMG_QUERY);
+		u->sprite_cache.sprite_seq.Set(SPR_IMG_QUERY);
 
 		v->random_bits = VehicleRandomBits();
 		u->random_bits = VehicleRandomBits();
@@ -374,7 +374,7 @@ CommandCost CmdBuildAircraft(TileIndex tile, DoCommandFlag flags, const Engine *
 			w->vehstatus = VS_HIDDEN | VS_UNCLICKABLE;
 			w->spritenum = 0xFF;
 			w->subtype = AIR_ROTOR;
-			w->sprite_seq.Set(SPR_ROTOR_STOPPED);
+			w->sprite_cache.sprite_seq.Set(SPR_ROTOR_STOPPED);
 			w->random_bits = VehicleRandomBits();
 			/* Use rotor's air.state to store the rotor animation frame */
 			w->state = HRS_ROTOR_STOPPED;
@@ -497,7 +497,7 @@ static void HelicopterTickHandler(Aircraft *v)
 	if (spd == 0) {
 		u->state = HRS_ROTOR_STOPPED;
 		GetRotorImage(v, EIT_ON_MAP, &seq);
-		if (u->sprite_seq == seq) return;
+		if (u->sprite_cache.sprite_seq == seq) return;
 	} else if (tick >= spd) {
 		u->tick_counter = 0;
 		u->state++;
@@ -507,7 +507,7 @@ static void HelicopterTickHandler(Aircraft *v)
 		return;
 	}
 
-	u->sprite_seq = seq;
+	u->sprite_cache.sprite_seq = seq;
 
 	u->UpdatePositionAndViewport();
 }
@@ -528,7 +528,7 @@ void SetAircraftPosition(Aircraft *v, int x, int y, int z)
 	v->UpdatePosition();
 	v->UpdateViewport(true, false);
 	if (v->subtype == AIR_HELICOPTER) {
-		GetRotorImage(v, EIT_ON_MAP, &v->Next()->Next()->sprite_seq);
+		GetRotorImage(v, EIT_ON_MAP, &v->Next()->Next()->sprite_cache.sprite_seq);
 	}
 
 	Aircraft *u = v->Next();
@@ -540,7 +540,7 @@ void SetAircraftPosition(Aircraft *v, int x, int y, int z)
 
 	safe_y = Clamp(u->y_pos, 0, MapMaxY() * TILE_SIZE);
 	u->z_pos = GetSlopePixelZ(safe_x, safe_y);
-	u->sprite_seq.CopyWithoutPalette(v->sprite_seq); // the shadow is never coloured
+	u->sprite_cache.sprite_seq.CopyWithoutPalette(v->sprite_cache.sprite_seq); // the shadow is never coloured
 
 	u->UpdatePositionAndViewport();
 
@@ -949,7 +949,14 @@ static bool AircraftController(Aircraft *v)
 			return false;
 		}
 
-		/* Vehicle is now at the airport. */
+		/* Vehicle is now at the airport.
+		 * Helicopter has arrived at the target landing pad, so the current position is also where it should land.
+		 * Except for Oilrigs which are special due to being a 1x1 station, and helicopters land outside it. */
+		if (st->airport.type != AT_OILRIG) {
+			x = v->x_pos;
+			y = v->y_pos;
+			tile = TileVirtXY(x, y);
+		}
 		v->tile = tile;
 
 		/* Find altitude of landing position. */
@@ -1092,6 +1099,19 @@ static bool AircraftController(Aircraft *v)
 			z = GetAircraftFlightLevel(v);
 		}
 
+		/* NewGRF airports (like a rotated intercontinental from OpenGFX+Airports) can be non-rectangular
+		 * and their primary (north-most) tile does not have to be part of the airport.
+		 * As such, the height of the primary tile can be different from the rest of the airport.
+		 * Given we are landing/breaking, and as such are not a helicopter, we know that there has to be a hangar.
+		 * We also know that the airport itself has to be completely flat (otherwise it is not a valid airport).
+		 * Therefore, use the height of this hangar to calculate our z-value. */
+		int airport_z = v->z_pos;
+		if ((amd.flag & (AMED_LAND | AMED_BRAKE)) && st != nullptr) {
+			assert(st->airport.HasHangar());
+			TileIndex hangar_tile = st->airport.GetHangarTile(0);
+			airport_z = TilePixelHeight(hangar_tile) + 1; // To avoid clashing with the shadow
+		}
+
 		if (amd.flag & AMED_LAND) {
 			if (st->airport.tile == INVALID_TILE) {
 				/* Airport has been removed, abort the landing procedure */
@@ -1103,27 +1123,24 @@ static bool AircraftController(Aircraft *v)
 				continue;
 			}
 
-			int curz = GetSlopePixelZ(x + amd.x, y + amd.y) + 1;
-
 			/* We're not flying below our destination, right? */
-			assert(curz <= z);
+			assert(airport_z <= z);
 			int t = max(1U, dist - 4);
-			int delta = z - curz;
+			int delta = z - airport_z;
 
 			/* Only start lowering when we're sufficiently close for a 1:1 glide */
 			if (delta >= t) {
-				z -= CeilDiv(z - curz, t);
+				z -= CeilDiv(z - airport_z, t);
 			}
-			if (z < curz) z = curz;
+			if (z < airport_z) z = airport_z;
 		}
 
 		/* We've landed. Decrease speed when we're reaching end of runway. */
 		if (amd.flag & AMED_BRAKE) {
-			int curz = GetSlopePixelZ(x, y) + 1;
 
-			if (z > curz) {
+			if (z > airport_z) {
 				z--;
-			} else if (z < curz) {
+			} else if (z < airport_z) {
 				z++;
 			}
 
@@ -1278,7 +1295,7 @@ void Aircraft::MarkDirty()
 	this->colourmap = PAL_NONE;
 	this->UpdateViewport(true, false);
 	if (this->subtype == AIR_HELICOPTER) {
-		GetRotorImage(this, EIT_ON_MAP, &this->Next()->Next()->sprite_seq);
+		GetRotorImage(this, EIT_ON_MAP, &this->Next()->Next()->sprite_cache.sprite_seq);
 	}
 }
 
@@ -1316,7 +1333,7 @@ static void CrashAirplane(Aircraft *v)
 	AI::NewEvent(v->owner, new ScriptEventVehicleCrashed(v->index, v->tile, st == nullptr ? ScriptEventVehicleCrashed::CRASH_AIRCRAFT_NO_AIRPORT : ScriptEventVehicleCrashed::CRASH_PLANE_LANDING));
 	Game::NewEvent(new ScriptEventVehicleCrashed(v->index, v->tile, st == nullptr ? ScriptEventVehicleCrashed::CRASH_AIRCRAFT_NO_AIRPORT : ScriptEventVehicleCrashed::CRASH_PLANE_LANDING));
 
-	AddVehicleNewsItem(newsitem, NT_ACCIDENT, v->index, st != nullptr ? st->index : INVALID_STATION);
+	AddTileNewsItem(newsitem, NT_ACCIDENT, v->tile, nullptr, st != nullptr ? st->index : INVALID_STATION);
 
 	ModifyStationRatingAround(v->tile, v->owner, -160, 30);
 	if (_settings_client.sound.disaster) SndPlayVehicleFx(SND_12_EXPLOSION, v);

@@ -192,7 +192,7 @@ void IniLoadFile::RemoveGroup(const char *name)
  * @param subdir the sub directory to load the file from.
  * @pre nothing has been loaded yet.
  */
-void IniLoadFile::LoadFromDisk(const char *filename, Subdirectory subdir)
+void IniLoadFile::LoadFromDisk(const std::string &filename, Subdirectory subdir)
 {
 	assert(this->last_group == &this->group);
 
